@@ -1,5 +1,5 @@
 class CalcUtils {
-  static caclulateResult(double num1, double num2, String operator) {
+  static double caclulateResult(double num1, double num2, String operator) {
     switch (operator) {
       case '+':
         return CalcUtils.add(num1, num2);
@@ -9,10 +9,8 @@ class CalcUtils {
         return CalcUtils.multiplication(num1, num2);
       case '/':
         return CalcUtils.division(num1, num2);
-      default:
-        print('default');
-        break;
     }
+    throw Error();
   }
 
   static double add(double num1, double num2) {

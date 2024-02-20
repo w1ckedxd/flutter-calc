@@ -9,72 +9,99 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+class CalcButtonProps {
+  const CalcButtonProps(this.type, this.value);
+
+  final CalcButtonType type;
+  final String value;
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   String output = '';
-  CalcButtonType? lastPressedButtonType;
-  String? lastPressedOperator;
   String num1 = '';
   String num2 = '';
-  double? result;
+  final List<CalcButtonProps> tapsHistory = [];
+
+  void allCleared() {
+    num1 = '';
+    num2 = '';
+    tapsHistory.clear();
+  }
+
+  double? parseAndCalcOutput() {
+    bool isWriteToNum1 = true;
+    String? prevOperator;
+
+    for (final props in tapsHistory) {
+      bool isNegative = false;
+      if (props.value == '-') {
+        final currentIndex = tapsHistory.indexOf(props);
+        if (num1.isEmpty ||
+            tapsHistory[currentIndex - 1].type == CalcButtonType.operator) {
+          isNegative = true;
+        }
+      }
+      if (props.type == CalcButtonType.operator && !isNegative) {
+        if (!isWriteToNum1) {
+          num1 = CalcUtils.caclulateResult(
+                  double.parse(num1), double.parse(num2), prevOperator!)
+              .toString();
+          num2 = '';
+        }
+        isWriteToNum1 = false;
+        prevOperator = props.value;
+        continue;
+      }
+      if (isWriteToNum1) {
+        num1 += props.value;
+      } else {
+        num2 += props.value;
+      }
+      print(num1 + ', ' + num2);
+    }
+    if (num1.isNotEmpty && num2.isNotEmpty) {
+      return CalcUtils.caclulateResult(
+          double.parse(num1), double.parse(num2), prevOperator!);
+    }
+    return null;
+  }
 
   void handleCalcControlButtonPressed(String calcValue, CalcButtonType type) {
-    final isFirst = lastPressedButtonType == null;
-    if (calcValue == 'AC' || calcValue == '=') {
-      result = null;
-      if (output.isNotEmpty &&
-          calcValue == '=' &&
-          lastPressedOperator != null &&
-          num1.isNotEmpty &&
-          num2.isNotEmpty) {
-        result = CalcUtils.caclulateResult(
-          double.parse(num1),
-          double.parse(num2),
-          lastPressedOperator!,
-        );
-      }
-      num1 = '';
-      num2 = '';
-      lastPressedButtonType = null;
-      lastPressedOperator = null;
+    final isFirst = tapsHistory.isEmpty;
+    final isFirstTypeOperator = isFirst &&
+        type == CalcButtonType.operator &&
+        calcValue != 'AC' &&
+        calcValue != '-';
+    final isDoubleOperatorInLine = tapsHistory.isNotEmpty &&
+        tapsHistory.last.type == CalcButtonType.operator &&
+        type == CalcButtonType.operator &&
+        calcValue != '-';
+
+    if (calcValue == 'AC') {
+      allCleared();
       setState(() {
-        if (calcValue == 'AC') {
-          output = '';
-        }
-        if (output != '' && calcValue == '=' && result != null) {
-          output = result.toString();
-        }
+        output = '';
       });
       return;
     }
-    if (lastPressedButtonType == CalcButtonType.operator &&
-        type == CalcButtonType.operator) {
+    if (isFirstTypeOperator || isDoubleOperatorInLine) {
       return;
     }
-    if (isFirst && type == CalcButtonType.operator && calcValue != '-') {
+    if (calcValue == '=') {
+      final parsedOutput = parseAndCalcOutput();
+      if (parsedOutput != null) {
+        setState(() {
+          output = parsedOutput.toString();
+        });
+        allCleared();
+      }
       return;
     }
-    if (type == CalcButtonType.operator) {
-      lastPressedOperator = calcValue;
-    }
+
+    tapsHistory.add(CalcButtonProps(type, calcValue));
     setState(() {
       output += calcValue;
     });
-    if ((type == CalcButtonType.digit || calcValue == '-') &&
-        num2.isEmpty &&
-        lastPressedButtonType != CalcButtonType.operator || calcValue == '-') {
-      lastPressedButtonType = null;
-      num1 += calcValue;
-    }
-    if (type == CalcButtonType.digit &&
-        (lastPressedButtonType == CalcButtonType.operator || num2.isNotEmpty)) {
-      num2 += calcValue;
-    }
-
-    lastPressedButtonType = type;
-
-    print('lastPressedButtonType: $lastPressedButtonType');
-    print('num1: $num1');
-    print('num2: $num2');
   }
 
   @override
@@ -104,24 +131,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     onCalcButtonPressed: handleCalcControlButtonPressed,
                     child: 'AC',
                   ),
-                  CalcButton(
-                    type: CalcButtonType.digit,
-                    value: '0',
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '0',
-                  ),
-                  CalcButton(
-                    type: CalcButtonType.operator,
-                    value: '*',
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '*',
-                  ),
-                  CalcButton(
-                    type: CalcButtonType.operator,
-                    value: '/',
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '/',
-                  ),
                 ],
               ),
               const SizedBox(
@@ -137,16 +146,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: '7',
                   ),
                   CalcButton(
-                    type: CalcButtonType.digit,
-                    value: '8',
+                    value: '-',
+                    type: CalcButtonType.operator,
                     onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '8',
-                  ),
-                  CalcButton(
-                    type: CalcButtonType.digit,
-                    value: '9',
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '9',
+                    child: '-',
                   ),
                   CalcButton(
                     value: '=',
@@ -159,59 +162,12 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(
                 height: 10,
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  CalcButton(
-                    type: CalcButtonType.digit,
-                    value: '4',
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '4',
-                  ),
-                  CalcButton(
-                    type: CalcButtonType.digit,
-                    value: '5',
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '5',
-                  ),
-                  CalcButton(
-                    type: CalcButtonType.digit,
-                    value: '6',
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '6',
-                  ),
-                  CalcButton(
-                    value: '-',
-                    type: CalcButtonType.operator,
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '-',
-                  ),
-                ],
-              ),
               const SizedBox(
                 height: 10,
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  CalcButton(
-                    type: CalcButtonType.digit,
-                    value: '1',
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '1',
-                  ),
-                  CalcButton(
-                    type: CalcButtonType.digit,
-                    value: '2',
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '2',
-                  ),
-                  CalcButton(
-                    type: CalcButtonType.digit,
-                    value: '3',
-                    onCalcButtonPressed: handleCalcControlButtonPressed,
-                    child: '3',
-                  ),
                   CalcButton(
                     value: '+',
                     type: CalcButtonType.operator,
